@@ -1,6 +1,7 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { TimeBlock } from "../../types/timeBlock";
 import { getMonthDays, checkIsToday, checkIsSameDay } from "../../utils/date";
-import { format } from "date-fns";
+import { format, isSameMonth, addMonths, subMonths } from "date-fns";
 import { TimeBlockItem } from "./TimeBlockItem";
 
 interface MonthViewProps {
@@ -17,10 +18,26 @@ export const MonthView = ({ selectedDate, onSelectDate, timeBlocks, onAddTask, o
 
   return (
     <div className="flex flex-col h-full bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50 flex-none">
-        {weekDays.map((day) => (
-          <div key={day} className="py-2 text-center text-sm font-semibold text-gray-600">
+      <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50 flex-none items-center">
+        {weekDays.map((day, index) => (
+          <div key={day} className="py-2 text-center text-sm font-semibold text-gray-600 relative flex justify-center items-center">
+            {index === 0 && (
+              <button 
+                onClick={() => onSelectDate(subMonths(selectedDate, 1))}
+                className="absolute left-2 p-1 rounded-md hover:bg-gray-200 text-gray-500 transition-colors"
+              >
+                <ChevronLeft size={16} />
+              </button>
+            )}
             {day}
+            {index === 6 && (
+              <button 
+                onClick={() => onSelectDate(addMonths(selectedDate, 1))}
+                className="absolute right-2 p-1 rounded-md hover:bg-gray-200 text-gray-500 transition-colors"
+              >
+                <ChevronRight size={16} />
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -30,6 +47,7 @@ export const MonthView = ({ selectedDate, onSelectDate, timeBlocks, onAddTask, o
           const isSelected = checkIsSameDay(day, selectedDate);
           const dateStr = format(day, "yyyy-MM-dd");
           const dayTasks = timeBlocks.filter(t => t.date === dateStr && t.status !== "inbox");
+          const isCurrentMonth = isSameMonth(day, selectedDate);
           
           return (
             <div
@@ -40,6 +58,7 @@ export const MonthView = ({ selectedDate, onSelectDate, timeBlocks, onAddTask, o
               }}
               className={`p-2 border-r border-b border-gray-100 cursor-pointer transition-colors flex flex-col overflow-hidden
                 ${isSelected ? "bg-blue-50/50" : "hover:bg-gray-50"}
+                ${!isCurrentMonth ? "opacity-50 bg-gray-50/50" : ""}
               `}
             >
               <div className="flex justify-between items-start mb-1 flex-none">

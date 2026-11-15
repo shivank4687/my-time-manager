@@ -7,8 +7,8 @@ export const getWeekDays = (date: Date): Date[] => {
 };
 
 export const getMonthDays = (date: Date): Date[] => {
-  const start = startOfMonth(date);
-  const end = endOfMonth(date);
+  const start = startOfWeek(startOfMonth(date), { weekStartsOn: 1 });
+  const end = endOfWeek(endOfMonth(date), { weekStartsOn: 1 });
   return eachDayOfInterval({ start, end });
 };
 

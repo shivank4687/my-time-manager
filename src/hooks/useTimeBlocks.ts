@@ -1,44 +1,97 @@
-import { useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import type { TimeBlock } from "../types/timeBlock";
 import { loadTimeBlocks, saveTimeBlocks } from "../utils/storage";
 
-export const useTimeBlocks = () => {
-  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
+interface TimeBlocksContextType {
+  timeBlocks: TimeBlock[];
+  addTask: (taskOrTasks: TimeBlock | TimeBlock[]) => void;
+  updateTask: (updatedTask: TimeBlock) => void;
+  deleteTask: (taskId: string) => void;
+  completeTask: (taskId: string) => void;
+  updateRecurringTasks: (deletedIds: string[], newTasks: TimeBlock[]) => void;
+}
+
+const TimeBlocksContext = createContext<TimeBlocksContextType | null>(null);
+
+export const TimeBlocksProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>(() => loadTimeBlocks());
 
   useEffect(() => {
-    setTimeBlocks(loadTimeBlocks());
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "time_scheduler_blocks" && e.newValue) {
+        try {
+          setTimeBlocks(JSON.parse(e.newValue));
+        } catch (err) {
+          console.error("Failed to sync time blocks from storage event", err);
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const save = (newBlocks: TimeBlock[]) => {
-    setTimeBlocks(newBlocks);
-    saveTimeBlocks(newBlocks);
-  };
-
-  const addTask = (task: TimeBlock) => {
-    save([...timeBlocks, task]);
+  const addTask = (taskOrTasks: TimeBlock | TimeBlock[]) => {
+    setTimeBlocks((prev) => {
+      const next = Array.isArray(taskOrTasks) ? [...prev, ...taskOrTasks] : [...prev, taskOrTasks];
+      saveTimeBlocks(next);
+      return next;
+    });
   };
 
   const updateTask = (updatedTask: TimeBlock) => {
-    save(timeBlocks.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
+    setTimeBlocks((prev) => {
+      const next = prev.map((t) => (t.id === updatedTask.id ? updatedTask : t));
+      saveTimeBlocks(next);
+      return next;
+    });
   };
 
   const deleteTask = (taskId: string) => {
-    save(timeBlocks.filter((t) => t.id !== taskId));
+    setTimeBlocks((prev) => {
+      const next = prev.filter((t) => t.id !== taskId);
+      saveTimeBlocks(next);
+      return next;
+    });
   };
 
   const completeTask = (taskId: string) => {
-    save(
-      timeBlocks.map((t) =>
-        t.id === taskId ? { ...t, status: "completed" } : t
-      )
-    );
+    setTimeBlocks((prev) => {
+      const next = prev.map((t) =>
+        t.id === taskId ? { ...t, status: "completed" as const } : t
+      );
+      saveTimeBlocks(next);
+      return next;
+    });
   };
 
-  return {
-    timeBlocks,
-    addTask,
-    updateTask,
-    deleteTask,
-    completeTask,
+  const updateRecurringTasks = (deletedIds: string[], newTasks: TimeBlock[]) => {
+    setTimeBlocks((prev) => {
+      const next = [...prev.filter((t) => !deletedIds.includes(t.id)), ...newTasks];
+      saveTimeBlocks(next);
+      return next;
+    });
   };
+
+  return React.createElement(
+    TimeBlocksContext.Provider,
+    {
+      value: {
+        timeBlocks,
+        addTask,
+        updateTask,
+        deleteTask,
+        completeTask,
+        updateRecurringTasks,
+      },
+    },
+    children
+  );
+};
+
+export const useTimeBlocks = () => {
+  const context = useContext(TimeBlocksContext);
+  if (!context) {
+    throw new Error("useTimeBlocks must be used within a TimeBlocksProvider");
+  }
+  return context;
 };

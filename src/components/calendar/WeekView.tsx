@@ -1,11 +1,13 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { TimeBlock } from "../../types/timeBlock";
 import { getWeekDays, checkIsToday } from "../../utils/date";
-import { format } from "date-fns";
+import { format, addWeeks, subWeeks } from "date-fns";
 import { TimeBlockItem } from "./TimeBlockItem";
 import { getLayoutForDay } from "../../utils/layout";
 
 interface WeekViewProps {
   selectedDate: Date;
+  onSelectDate: (date: Date) => void;
   timeBlocks: TimeBlock[];
   onAddTask: (dateStr: string, timeStr?: string) => void;
   onEditTask: (task: TimeBlock) => void;
@@ -14,19 +16,35 @@ interface WeekViewProps {
 const PIXELS_PER_HOUR = 96; // h-24 = 6rem = 96px
 const PIXELS_PER_MINUTE = PIXELS_PER_HOUR / 60;
 
-export const WeekView = ({ selectedDate, timeBlocks, onAddTask, onEditTask }: WeekViewProps) => {
+export const WeekView = ({ selectedDate, onSelectDate, timeBlocks, onAddTask, onEditTask }: WeekViewProps) => {
   const weekDays = getWeekDays(selectedDate);
   const hours = Array.from({ length: 24 }, (_, i) => (i + 4) % 24);
 
   return (
     <div className="flex flex-col h-full bg-white border border-gray-200 rounded-lg overflow-hidden flex-1 min-h-0">
       <div className="flex border-b border-gray-200 bg-gray-50 pl-16 flex-none">
-        {weekDays.map((day) => (
-          <div key={day.toISOString()} className="flex-1 py-3 text-center border-l border-gray-200 first:border-l-0">
+        {weekDays.map((day, index) => (
+          <div key={day.toISOString()} className="flex-1 py-3 text-center border-l border-gray-200 first:border-l-0 relative flex flex-col items-center justify-center">
+            {index === 0 && (
+              <button 
+                onClick={() => onSelectDate(subWeeks(selectedDate, 1))}
+                className="absolute left-1 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-gray-200 text-gray-500 transition-colors z-20 bg-gray-50/50 hover:bg-gray-200/50"
+              >
+                <ChevronLeft size={16} />
+              </button>
+            )}
             <div className="text-xs text-gray-500 uppercase">{format(day, "EEE")}</div>
             <div className={`text-lg font-medium ${checkIsToday(day) ? "text-blue-600" : "text-gray-900"}`}>
               {format(day, "d")}
             </div>
+            {index === 6 && (
+              <button 
+                onClick={() => onSelectDate(addWeeks(selectedDate, 1))}
+                className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-gray-200 text-gray-500 transition-colors z-20 bg-gray-50/50 hover:bg-gray-200/50"
+              >
+                <ChevronRight size={16} />
+              </button>
+            )}
           </div>
         ))}
       </div>
